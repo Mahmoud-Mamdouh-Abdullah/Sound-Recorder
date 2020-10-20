@@ -8,6 +8,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -19,14 +20,22 @@ import androidx.fragment.app.Fragment;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+
+import io.reactivex.CompletableObserver;
+import io.reactivex.Scheduler;
+import io.reactivex.SingleObserver;
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.schedulers.Schedulers;
 
 public class listen_freg extends Fragment {
 
     ListView listView;
     ArrayAdapter<String> arrayAdapter;
-    DBHelper dbHelper;
     MediaPlayer mediaPlayer;
     TextView record_stat;
     FloatingActionButton play;
@@ -42,13 +51,31 @@ public class listen_freg extends Fragment {
         listView = (ListView)view.findViewById(R.id.list_item);
         arrayAdapter = new ArrayAdapter<String>(getContext(),R.layout.list);
         listView.setAdapter(arrayAdapter);
-        dbHelper = new DBHelper(getContext());
-        Cursor cursor = dbHelper.fetchAllRecords();
-        while (!cursor.isAfterLast())
-        {
-            arrayAdapter.add(cursor.getString(0));
-            cursor.moveToNext();
-        }
+
+        final RecordsDatabase recordsDatabase = RecordsDatabase.getInstance(getActivity());
+        recordsDatabase.recordsDao().getRecords()
+                .subscribeOn(Schedulers.computation())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new SingleObserver<List<RecordingItem>>() {
+                    @Override
+                    public void onSubscribe(@io.reactivex.annotations.NonNull Disposable d) {
+
+                    }
+
+                    @Override
+                    public void onSuccess(@io.reactivex.annotations.NonNull List<RecordingItem> recordingItems) {
+                        for(int i = 0; i < recordingItems.size(); i ++)
+                        {
+                            arrayAdapter.add(recordingItems.get(i).getPath());
+                        }
+                    }
+
+                    @Override
+                    public void onError(@io.reactivex.annotations.NonNull Throwable e) {
+
+                    }
+                });
+
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
@@ -90,6 +117,7 @@ public class listen_freg extends Fragment {
                 }
             }
         });
+
         return view;
     }
 }

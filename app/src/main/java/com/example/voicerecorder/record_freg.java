@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.media.MediaPlayer;
 import android.media.MediaRecorder;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.SystemClock;
@@ -21,6 +22,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
@@ -32,21 +34,25 @@ import java.io.IOException;
 import java.util.Objects;
 import java.util.UUID;
 
+import io.reactivex.CompletableObserver;
+import io.reactivex.Scheduler;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.schedulers.Schedulers;
+
 public class record_freg extends Fragment {
 
-    FloatingActionButton recordButton = null;
-    TextView recordingPrompt = null;
-    String pathSave = "";
-    MediaRecorder mediaRecorder;
-    MediaPlayer mediaPlayer;
-    final int REQUEST_PERMISSION_CODE = 1000;
+    private FloatingActionButton recordButton = null;
+    private TextView recordingPrompt = null;
+    private ImageButton completeRecord, cancelRecord;
+    private String pathSave = "";
+    private MediaRecorder mediaRecorder;
+    private long pauseOffset;
+    private final int REQUEST_PERMISSION_CODE = 1000;
 
     int RecordingPromptCount  = 0;
-    boolean startRecording = false;
+    boolean startRecording = false, pauseState = false;
     Chronometer chronometer = null;
     long timeWhenPaused  = 0;
-
-    DBHelper dbHelper;
 
     @Nullable
     @Override
@@ -56,37 +62,52 @@ public class record_freg extends Fragment {
         chronometer = (Chronometer)view.findViewById(R.id.timer);
         recordingPrompt = view.findViewById(R.id.record_status);
         recordButton = view.findViewById(R.id.record_btn);
+        completeRecord = view.findViewById(R.id.complete_recordBtn);
+        cancelRecord = view.findViewById(R.id.cancel_recordBtn);
         recordButton.setBackgroundColor(getResources().getColor(R.color.color_btn));
         recordButton.setRippleColor(getResources().getColor(R.color.color_hover));
 
-        dbHelper = new DBHelper(getActivity());
+        final RecordsDatabase recordsDatabase = RecordsDatabase.getInstance(getActivity());
+
 
         if(!checkPermissionFromDevice())
             requestPermissions();
 
         recordButton.setOnClickListener(new View.OnClickListener() {
+            @RequiresApi(api = Build.VERSION_CODES.N)
             @Override
             public void onClick(View v) {
 
                 if(startRecording == false)
                 {
-                    start_timer();
                     if(checkPermissionFromDevice())
                     {
-                        recordButton.setImageResource(R.drawable.stop_foreground);
-                        pathSave = Environment.getExternalStorageDirectory()
-                                .getAbsolutePath()+"/"
-                                + UUID.randomUUID().toString() + "_audio_record.mp3";
-                        setupMediaRecorder();
-                        try {
-                            mediaRecorder.prepare();
+                        startChronometer();
+                        if(pauseState == true)
+                        {
+                            mediaRecorder.resume();
+                            recordButton.setImageResource(R.drawable.pause_foreground);
+                        }
+                        else
+                        {
+                            recordButton.setImageResource(R.drawable.pause_foreground);
+                            completeRecord.setVisibility(View.VISIBLE);
+                            cancelRecord.setVisibility(View.VISIBLE);
+                            pathSave = getActivity().getExternalCacheDir().getAbsolutePath();
+                            pathSave += "/" + System.currentTimeMillis() + "audio.mp3";
+
+                            setupMediaRecorder();
+
+                            try {
+                                mediaRecorder.prepare();
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
                             mediaRecorder.start();
+                            Toast.makeText(getActivity(), "Recording", Toast.LENGTH_SHORT).show();
                         }
-                        catch (IOException e){
-                            e.printStackTrace();
-                        }
-                        Toast.makeText(getActivity(), "Recording", Toast.LENGTH_SHORT).show();
                         startRecording = true;
+
                     }
                     else
                     {
@@ -95,26 +116,78 @@ public class record_freg extends Fragment {
                 }
                 else
                 {
-                    stop_timer();
-                    mediaRecorder.stop();
+                    pauseChronometer();
+                    mediaRecorder.pause();
                     recordButton.setImageResource(R.drawable.mic_foreground);
-                    RecordingItem record = new RecordingItem(pathSave);
-                    dbHelper.addRecording(record);
+                    pauseState = true;
                     startRecording = false;
                 }
             }
         });
+
+        completeRecord.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                long timeInSecond = SystemClock.elapsedRealtime() - chronometer.getBase();
+                timeInSecond = timeInSecond / 1000 + 1;
+                resetChronometer();
+                mediaRecorder.stop();
+                mediaRecorder.release();
+                mediaRecorder = null;
+                startRecording = false;
+                pauseState = false;
+                RecordingItem record = new RecordingItem(pathSave);
+                recordsDatabase.recordsDao().insertRecord(record)
+                        .subscribeOn(Schedulers.computation())
+                        .subscribe(new CompletableObserver() {
+                            @Override
+                            public void onSubscribe(@io.reactivex.annotations.NonNull Disposable d) {
+
+                            }
+
+                            @Override
+                            public void onComplete() {
+                            }
+
+                            @Override
+                            public void onError(@io.reactivex.annotations.NonNull Throwable e) {
+
+                            }
+                        });
+                recordButton.setImageResource(R.drawable.mic_foreground);
+                completeRecord.setVisibility(View.INVISIBLE);
+                cancelRecord.setVisibility(View.INVISIBLE);
+            }
+        });
+
+        cancelRecord.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                resetChronometer();
+                mediaRecorder.stop();
+                mediaRecorder.reset();
+                mediaRecorder.release();
+                mediaRecorder = null;
+                startRecording = false;
+                pauseState = false;
+                recordButton.setImageResource(R.drawable.mic_foreground);
+                completeRecord.setVisibility(View.INVISIBLE);
+                cancelRecord.setVisibility(View.INVISIBLE);
+            }
+        });
+
         return view;
     }
 
     private void setupMediaRecorder() {
         mediaRecorder = new MediaRecorder();
         mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
-        mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
-        mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+        mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
+        mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
         mediaRecorder.setOutputFile(pathSave);
 
     }
+
 
     private void requestPermissions() {
         ActivityCompat.requestPermissions(getActivity(),new String[]{
@@ -122,7 +195,6 @@ public class record_freg extends Fragment {
                 Manifest.permission.RECORD_AUDIO
 
         },REQUEST_PERMISSION_CODE);
-
     }
 
     @Override
@@ -148,100 +220,24 @@ public class record_freg extends Fragment {
                 record_audio_result == PackageManager.PERMISSION_GRANTED;
     }
 
-    public void start_timer()
+    public void startChronometer()
+    {
+        chronometer.setVisibility(View.VISIBLE);
+        chronometer.setBase(SystemClock.elapsedRealtime() - pauseOffset);
+        chronometer.start();
+        recordingPrompt.setVisibility(View.INVISIBLE);
+    }
+    public void resetChronometer()
     {
         chronometer.setBase(SystemClock.elapsedRealtime());
-        chronometer.start();
-        chronometer.setOnChronometerTickListener(new Chronometer.OnChronometerTickListener() {
-            @Override
-            public void onChronometerTick(Chronometer chronometer) {
-                if(RecordingPromptCount == 0)
-                {
-                    recordingPrompt.setText("Recording" + ".");
-                }
-                else if(RecordingPromptCount == 1)
-                {
-                    recordingPrompt.setText("Recording" + "..");
-                }
-                else  if(RecordingPromptCount == 2)
-                {
-                    recordingPrompt.setText("Recording" + "...");
-                    RecordingPromptCount = -1;
-                }
-                RecordingPromptCount ++;
-            }
-        });
-        recordingPrompt.setText("Recording"+".");
+        pauseOffset = 0;
+        chronometer.setVisibility(View.INVISIBLE);
+        recordingPrompt.setVisibility(View.VISIBLE);
     }
-    public void stop_timer()
+    
+    public void pauseChronometer()
     {
         chronometer.stop();
-        chronometer.setBase(SystemClock.elapsedRealtime());
-        recordingPrompt.setText("Tap the button to start recording");
-    }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    private void onRecord(boolean start) {
-        Intent i = new Intent(getActivity(),RecordingService.class);
-        if(start)
-        {
-            recordButton.setImageResource(R.drawable.stop_foreground);
-            Toast.makeText(getActivity(),"Recording started",Toast.LENGTH_SHORT).show();
-            File folder = new File(Environment.getExternalStorageDirectory()+"/SoundRecorder");
-            if(!folder.exists())
-            {
-                folder.mkdir();
-
-            }
-            chronometer.setBase(SystemClock.elapsedRealtime());
-            chronometer.start();
-            chronometer.setOnChronometerTickListener(new Chronometer.OnChronometerTickListener() {
-                @Override
-                public void onChronometerTick(Chronometer chronometer) {
-                    if(RecordingPromptCount == 0)
-                    {
-                        recordingPrompt.setText("Recording" + ".");
-                    }
-                    else if(RecordingPromptCount == 1)
-                    {
-                        recordingPrompt.setText("Recording" + "..");
-                    }
-                    else  if(RecordingPromptCount == 2)
-                    {
-                        recordingPrompt.setText("Recording" + "...");
-                        RecordingPromptCount = -1;
-                    }
-                    RecordingPromptCount ++;
-                }
-            });
-
-            getActivity().startService(i);
-            getActivity().getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-            recordingPrompt.setText("Recording"+".");
-            RecordingPromptCount++;
-
-        }
-        else
-        {
-            recordButton.setImageResource(R.drawable.mic_foreground);
-            chronometer.stop();
-            chronometer.setBase(SystemClock.elapsedRealtime());
-            timeWhenPaused = 0;
-            recordingPrompt.setText("Tap the button to start recording");
-            Objects.requireNonNull(getActivity()).startService(i);
-            getActivity().getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        }
+        pauseOffset = SystemClock.elapsedRealtime() - chronometer.getBase();
     }
 }
