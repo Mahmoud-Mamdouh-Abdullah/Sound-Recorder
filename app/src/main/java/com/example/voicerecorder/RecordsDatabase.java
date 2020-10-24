@@ -14,7 +14,7 @@ public abstract class RecordsDatabase extends RoomDatabase {
     public static synchronized RecordsDatabase getInstance(Context context) {
         if(instance == null) {
             instance = Room.databaseBuilder(context.getApplicationContext(),
-                    RecordsDatabase.class, "records_database")
+                    RecordsDatabase.class, "record_database")
                     .fallbackToDestructiveMigration()
                     .build();
         }

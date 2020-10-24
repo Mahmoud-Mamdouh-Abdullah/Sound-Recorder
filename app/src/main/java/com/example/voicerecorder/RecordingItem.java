@@ -14,20 +14,22 @@ public class RecordingItem implements Serializable {
     @NonNull
     private String path;
     private String recordName;
-    private int recordDuration;
+    private String recordDuration;
+    private String recordSize;
+    private String dateTime;
+
 
     @Ignore
-    public RecordingItem(){}
-
     public RecordingItem(String path) {
         this.path = path;
     }
 
-    @Ignore
-    public RecordingItem(String path, String recordName, int recordDuration) {
+    public RecordingItem(@NonNull String path, String recordName, String recordDuration, String recordSize, String dateTime) {
         this.path = path;
         this.recordName = recordName;
         this.recordDuration = recordDuration;
+        this.recordSize = recordSize;
+        this.dateTime = dateTime;
     }
 
     public String getPath() {
@@ -46,11 +48,27 @@ public class RecordingItem implements Serializable {
         this.recordName = recordName;
     }
 
-    public int getRecordDuration() {
+    public String getRecordDuration() {
         return recordDuration;
     }
 
-    public void setRecordDuration(int recordDuration) {
+    public void setRecordDuration(String recordDuration) {
         this.recordDuration = recordDuration;
+    }
+
+    public String getRecordSize() {
+        return recordSize;
+    }
+
+    public void setRecordSize(String recordSize) {
+        this.recordSize = recordSize;
+    }
+
+    public String getDateTime() {
+        return dateTime;
+    }
+
+    public void setDateTime(String dateTime) {
+        this.dateTime = dateTime;
     }
 }

@@ -9,8 +9,8 @@ import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentPagerAdapter;
 
 import com.example.voicerecorder.R;
-import com.example.voicerecorder.listen_freg;
-import com.example.voicerecorder.record_freg;
+import com.example.voicerecorder.ListenFragment;
+import com.example.voicerecorder.RecordFragment;
 
 /**
  * A [FragmentPagerAdapter] that returns a fragment corresponding to
@@ -34,10 +34,10 @@ public class SectionsPagerAdapter extends FragmentPagerAdapter {
         switch (position)
         {
             case 0:
-                fragment = new record_freg();
+                fragment = new RecordFragment();
                 break;
             case 1:
-                fragment = new listen_freg();
+                fragment = new ListenFragment();
         }
         return fragment;
     }

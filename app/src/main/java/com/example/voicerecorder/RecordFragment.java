@@ -3,6 +3,7 @@ package com.example.voicerecorder;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
 import android.media.MediaRecorder;
 import android.os.Build;
@@ -15,7 +16,9 @@ import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.Chronometer;
+import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -31,6 +34,8 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -39,11 +44,12 @@ import io.reactivex.Scheduler;
 import io.reactivex.disposables.Disposable;
 import io.reactivex.schedulers.Schedulers;
 
-public class record_freg extends Fragment {
+public class RecordFragment extends Fragment {
 
     private FloatingActionButton recordButton = null;
     private TextView recordingPrompt = null;
-    private ImageButton completeRecord, cancelRecord;
+    private EditText recordName;
+    private ImageView completeRecord, cancelRecord;
     private String pathSave = "";
     private MediaRecorder mediaRecorder;
     private long pauseOffset;
@@ -52,7 +58,6 @@ public class record_freg extends Fragment {
     int RecordingPromptCount  = 0;
     boolean startRecording = false, pauseState = false;
     Chronometer chronometer = null;
-    long timeWhenPaused  = 0;
 
     @Nullable
     @Override
@@ -62,6 +67,7 @@ public class record_freg extends Fragment {
         chronometer = (Chronometer)view.findViewById(R.id.timer);
         recordingPrompt = view.findViewById(R.id.record_status);
         recordButton = view.findViewById(R.id.record_btn);
+        recordName = view.findViewById(R.id.record_name_et);
         completeRecord = view.findViewById(R.id.complete_recordBtn);
         cancelRecord = view.findViewById(R.id.cancel_recordBtn);
         recordButton.setBackgroundColor(getResources().getColor(R.color.color_btn));
@@ -107,7 +113,6 @@ public class record_freg extends Fragment {
                             Toast.makeText(getActivity(), "Recording", Toast.LENGTH_SHORT).show();
                         }
                         startRecording = true;
-
                     }
                     else
                     {
@@ -128,15 +133,23 @@ public class record_freg extends Fragment {
         completeRecord.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                long timeInSecond = SystemClock.elapsedRealtime() - chronometer.getBase();
-                timeInSecond = timeInSecond / 1000 + 1;
                 resetChronometer();
                 mediaRecorder.stop();
                 mediaRecorder.release();
                 mediaRecorder = null;
                 startRecording = false;
                 pauseState = false;
-                RecordingItem record = new RecordingItem(pathSave);
+
+                String name = "";
+                if(recordName.getText().toString().isEmpty())
+                    name = "audio" + System.currentTimeMillis() + ".mp3";
+                else
+                    name = recordName.getText().toString() + ".mp3";
+                String duration = getRecordDuration(pathSave);
+                String recordSize = getRecordSize(pathSave);
+                String dateTime = getCurrDateTime();
+
+                RecordingItem record = new RecordingItem(pathSave, name, duration, recordSize, dateTime);
                 recordsDatabase.recordsDao().insertRecord(record)
                         .subscribeOn(Schedulers.computation())
                         .subscribe(new CompletableObserver() {
@@ -239,5 +252,69 @@ public class record_freg extends Fragment {
     {
         chronometer.stop();
         pauseOffset = SystemClock.elapsedRealtime() - chronometer.getBase();
+    }
+
+    public String getRecordSize(String path)
+    {
+        String recordSize;
+        File file = new File(path);
+        int sizeInKB = (int) (file.length() / 1024);
+        if(sizeInKB >= 1024) {
+            recordSize = String.valueOf(sizeInKB / 1024) + " MB";
+        }
+        else{
+            recordSize = String.valueOf(sizeInKB) + " KB";
+        }
+        return recordSize;
+    }
+
+    public String getRecordDuration(String path)
+    {
+        MediaMetadataRetriever mediaMetadataRetriever = new MediaMetadataRetriever();
+        mediaMetadataRetriever.setDataSource(path);
+        String durationStr = mediaMetadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+        int timeInMilliSecond = Integer.parseInt(durationStr);
+        String finalFormat = formatMilliSeconds(timeInMilliSecond);
+        return finalFormat;
+    }
+
+    public String formatMilliSeconds(int milliSeconds)
+    {
+        String finalTimerString = "";
+        String secondsString = "";
+
+        int hours = milliSeconds / (1000 * 60 * 60);
+        int minutes = (milliSeconds % (1000 * 60 * 60)) / (1000 * 60);
+        int seconds = ((milliSeconds % (1000 * 60 * 60)) % (1000 * 60)) / 1000;
+
+        if(hours > 0) {
+            finalTimerString = hours + ":";
+        }
+        if(seconds < 10) {
+            secondsString = "0" + seconds;
+        }
+        else {
+            secondsString = "" + seconds;
+        }
+        if(minutes > 10)
+            finalTimerString = finalTimerString + minutes + ":" + secondsString;
+        else
+            finalTimerString = finalTimerString + "0" + minutes + ":" + secondsString;
+
+        return finalTimerString;
+    }
+
+    public String getCurrDateTime()
+    {
+        Date currentTime = Calendar.getInstance().getTime();
+        String curDate = currentTime.toString();
+        String dateTime = "";
+        for(int i = 0; i < curDate.length(); i ++)
+        {
+            if(curDate.charAt(i) == 'G' && curDate.charAt(i+1) == 'M' && curDate.charAt(i+2) == 'T')
+                break;
+            dateTime += curDate.charAt(i);
+        }
+        return dateTime;
     }
 }

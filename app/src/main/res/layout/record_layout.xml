@@ -26,6 +26,7 @@
         android:id="@+id/record_btn"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginTop="28dp"
         android:layout_marginBottom="10dp"
         android:background="@drawable/hover"
         android:src="@drawable/mic_foreground"
@@ -33,15 +34,15 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.498"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.936" />
+        app:layout_constraintTop_toBottomOf="@+id/record_status"
+        app:layout_constraintVertical_bias="0.0" />
 
-    <ImageButton
+    <ImageView
         android:id="@+id/complete_recordBtn"
         android:layout_width="25dp"
         android:layout_height="25dp"
-        android:background="@drawable/complete_foreground"
-        app:layout_constraintBottom_toBottomOf="parent"
+        android:src="@drawable/complete_foreground"
+        android:background="?android:attr/selectableItemBackgroundBorderless"        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.385"
         app:layout_constraintStart_toEndOf="@+id/record_btn"
@@ -49,18 +50,20 @@
         app:layout_constraintVertical_bias="0.19"
         android:visibility="invisible"/>
 
-    <ImageButton
+    <ImageView
         android:id="@+id/cancel_recordBtn"
         android:layout_width="25dp"
         android:layout_height="25dp"
-        android:background="@drawable/cancel_foreground"
+        android:src="@drawable/cancel_foreground"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="parent"
         app:layout_constraintHorizontal_bias="0.611"
         app:layout_constraintStart_toEndOf="@+id/record_btn"
         app:layout_constraintTop_toTopOf="@+id/record_btn"
         app:layout_constraintVertical_bias="0.19"
-        android:visibility="invisible"/>
+        android:visibility="invisible"
+        />
 
     <Chronometer
         android:id="@+id/timer"
@@ -70,13 +73,14 @@
         android:textColor="#ffffff"
         android:textSize="24sp"
         android:visibility="invisible"
-        app:layout_constraintBottom_toTopOf="@+id/record_btn"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.966" />
+        app:layout_constraintTop_toBottomOf="@+id/linearLayout"
+        app:layout_constraintVertical_bias="0.204"/>
 
     <EditText
+        android:id="@+id/record_name_et"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="64dp"
@@ -103,11 +107,9 @@
         android:textSize="12sp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.496"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.81" />
-
+        app:layout_constraintTop_toBottomOf="@+id/linearLayout"
+        app:layout_constraintVertical_bias="0.204" />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>
