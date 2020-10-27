@@ -8,12 +8,10 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.voicerecorder.RecordingItem;
-
 import java.util.ArrayList;
 
 public class RecordsAdapter extends RecyclerView.Adapter<RecordsAdapter.RecordsViewHolder> {
-    private ArrayList<RecordingItem> recordsList = new ArrayList<>();
+    private ArrayList<RecordModel> recordsList = new ArrayList<>();
     private OnRecordClickListener mOnRecordClickListener;
 
     public interface OnRecordClickListener {
@@ -44,9 +42,13 @@ public class RecordsAdapter extends RecyclerView.Adapter<RecordsAdapter.RecordsV
         return recordsList.size();
     }
 
-    public void setList(ArrayList<RecordingItem> recordsList) {
+    public void setList(ArrayList<RecordModel> recordsList) {
         this.recordsList = recordsList;
         notifyDataSetChanged();
+    }
+
+    public RecordModel getRecordAt(int position) {
+        return recordsList.get(position);
     }
 
     public class RecordsViewHolder extends RecyclerView.ViewHolder {

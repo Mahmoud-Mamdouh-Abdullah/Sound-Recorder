@@ -8,7 +8,7 @@ import androidx.room.PrimaryKey;
 import java.io.Serializable;
 
 @Entity(tableName = "records_table")
-public class RecordingItem implements Serializable {
+public class RecordModel implements Serializable {
 
     @PrimaryKey
     @NonNull
@@ -20,11 +20,11 @@ public class RecordingItem implements Serializable {
 
 
     @Ignore
-    public RecordingItem(String path) {
+    public RecordModel(String path) {
         this.path = path;
     }
 
-    public RecordingItem(@NonNull String path, String recordName, String recordDuration, String recordSize, String dateTime) {
+    public RecordModel(@NonNull String path, String recordName, String recordDuration, String recordSize, String dateTime) {
         this.path = path;
         this.recordName = recordName;
         this.recordDuration = recordDuration;

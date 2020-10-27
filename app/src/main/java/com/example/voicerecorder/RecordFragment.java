@@ -1,25 +1,20 @@
 package com.example.voicerecorder;
 
 import android.Manifest;
-import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.media.MediaMetadataRetriever;
-import android.media.MediaPlayer;
 import android.media.MediaRecorder;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.SystemClock;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.WindowManager;
-import android.widget.Button;
 import android.widget.Chronometer;
 import android.widget.EditText;
-import android.widget.ImageButton;
 import android.widget.ImageView;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -29,6 +24,7 @@ import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProviders;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
@@ -36,13 +32,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.Objects;
-import java.util.UUID;
-
-import io.reactivex.CompletableObserver;
-import io.reactivex.Scheduler;
-import io.reactivex.disposables.Disposable;
-import io.reactivex.schedulers.Schedulers;
 
 public class RecordFragment extends Fragment {
 
@@ -54,28 +43,18 @@ public class RecordFragment extends Fragment {
     private MediaRecorder mediaRecorder;
     private long pauseOffset;
     private final int REQUEST_PERMISSION_CODE = 1000;
+    private boolean startRecording = false, pauseState = false;
+    private Chronometer chronometer = null;
 
-    int RecordingPromptCount  = 0;
-    boolean startRecording = false, pauseState = false;
-    Chronometer chronometer = null;
+    private RecordsViewModel recordsViewModel;
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
 
         View view = inflater.inflate(R.layout.record_layout,container,false);
-        chronometer = (Chronometer)view.findViewById(R.id.timer);
-        recordingPrompt = view.findViewById(R.id.record_status);
-        recordButton = view.findViewById(R.id.record_btn);
-        recordName = view.findViewById(R.id.record_name_et);
-        completeRecord = view.findViewById(R.id.complete_recordBtn);
-        cancelRecord = view.findViewById(R.id.cancel_recordBtn);
-        recordButton.setBackgroundColor(getResources().getColor(R.color.color_btn));
-        recordButton.setRippleColor(getResources().getColor(R.color.color_hover));
 
-        final RecordsDatabase recordsDatabase = RecordsDatabase.getInstance(getActivity());
-
-
+        init(view);
         if(!checkPermissionFromDevice())
             requestPermissions();
 
@@ -99,8 +78,10 @@ public class RecordFragment extends Fragment {
                             recordButton.setImageResource(R.drawable.pause_foreground);
                             completeRecord.setVisibility(View.VISIBLE);
                             cancelRecord.setVisibility(View.VISIBLE);
-                            pathSave = getActivity().getExternalCacheDir().getAbsolutePath();
-                            pathSave += "/" + System.currentTimeMillis() + "audio.mp3";
+
+                            File path = getActivity().getExternalFilesDir(Environment.DIRECTORY_MUSIC);
+                            pathSave = path.toString() + "/" + System.currentTimeMillis() + "audio.mp3";
+                            Log.e("Record Error", pathSave);
 
                             setupMediaRecorder();
 
@@ -149,24 +130,8 @@ public class RecordFragment extends Fragment {
                 String recordSize = getRecordSize(pathSave);
                 String dateTime = getCurrDateTime();
 
-                RecordingItem record = new RecordingItem(pathSave, name, duration, recordSize, dateTime);
-                recordsDatabase.recordsDao().insertRecord(record)
-                        .subscribeOn(Schedulers.computation())
-                        .subscribe(new CompletableObserver() {
-                            @Override
-                            public void onSubscribe(@io.reactivex.annotations.NonNull Disposable d) {
-
-                            }
-
-                            @Override
-                            public void onComplete() {
-                            }
-
-                            @Override
-                            public void onError(@io.reactivex.annotations.NonNull Throwable e) {
-
-                            }
-                        });
+                RecordModel record = new RecordModel(pathSave, name, duration, recordSize, dateTime);
+                recordsViewModel.insertRecord(record);
                 recordButton.setImageResource(R.drawable.mic_foreground);
                 completeRecord.setVisibility(View.INVISIBLE);
                 cancelRecord.setVisibility(View.INVISIBLE);
@@ -190,6 +155,16 @@ public class RecordFragment extends Fragment {
         });
 
         return view;
+    }
+
+    private void init(View view) {
+        chronometer = (Chronometer)view.findViewById(R.id.timer);
+        recordingPrompt = view.findViewById(R.id.record_status);
+        recordButton = view.findViewById(R.id.record_btn);
+        recordName = view.findViewById(R.id.record_name_et);
+        completeRecord = view.findViewById(R.id.complete_recordBtn);
+        cancelRecord = view.findViewById(R.id.cancel_recordBtn);
+        recordsViewModel = ViewModelProviders.of(getActivity()).get(RecordsViewModel.class);
     }
 
     private void setupMediaRecorder() {

@@ -1,42 +1,32 @@
 package com.example.voicerecorder;
 
-import android.database.Cursor;
-import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.SystemClock;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.Chronometer;
-import android.widget.ImageButton;
-import android.widget.ListView;
 import android.widget.SeekBar;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProviders;
+import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-
-import io.reactivex.CompletableObserver;
-import io.reactivex.Scheduler;
-import io.reactivex.SingleObserver;
-import io.reactivex.android.schedulers.AndroidSchedulers;
-import io.reactivex.disposables.Disposable;
-import io.reactivex.schedulers.Schedulers;
 
 public class ListenFragment extends Fragment {
 
@@ -44,49 +34,33 @@ public class ListenFragment extends Fragment {
     private FloatingActionButton play;
     private boolean playing_stat;
     private RecyclerView recordRecyclerView;
-    private ArrayList<RecordingItem> recordsList;
+    private ArrayList<RecordModel> recordsList;
     private Chronometer chronometer = null;
     private long pauseOffset;
     private SeekBar seekBar;
+    private RecordsAdapter recordsAdapter;
+    private Runnable runnable;
+    private Handler handler;
 
-    Runnable runnable;
-    Handler handler;
+    private RecordsViewModel recordsViewModel;
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.listen_layout,container,false);
 
-        play = view.findViewById(R.id.play_btn);
-        chronometer = view.findViewById(R.id.timer);
-        seekBar = view.findViewById(R.id.seekBar);
-        playing_stat = false;
-        recordRecyclerView = (RecyclerView) view.findViewById(R.id.recordRecyclerView);
-        final RecordsAdapter recordsAdapter = new RecordsAdapter();
-        recordRecyclerView.setAdapter(recordsAdapter);
 
-        handler = new Handler();
-        final RecordsDatabase recordsDatabase = RecordsDatabase.getInstance(getActivity());
-        recordsDatabase.recordsDao().getRecords()
-                .subscribeOn(Schedulers.computation())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new SingleObserver<List<RecordingItem>>() {
-                    @Override
-                    public void onSubscribe(@io.reactivex.annotations.NonNull Disposable d) {
+        init(view);
 
-                    }
+        recordsViewModel = ViewModelProviders.of(getActivity()).get(RecordsViewModel.class);
+        recordsViewModel.getAllRecords().observe(this, new Observer<List<RecordModel>>() {
+            @Override
+            public void onChanged(List<RecordModel> recordModels) {
+                recordsAdapter.setList((ArrayList<RecordModel>) recordModels);
+                recordsList = (ArrayList<RecordModel>) recordModels;
+            }
+        });
 
-                    @Override
-                    public void onSuccess(@io.reactivex.annotations.NonNull List<RecordingItem> recordingItems) {
-                        recordsAdapter.setList((ArrayList<RecordingItem>) recordingItems);
-                        recordsList = (ArrayList<RecordingItem>) recordingItems;
-                    }
-
-                    @Override
-                    public void onError(@io.reactivex.annotations.NonNull Throwable e) {
-
-                    }
-                });
 
         recordsAdapter.setOnRecordClickListener(new RecordsAdapter.OnRecordClickListener() {
             @Override
@@ -127,7 +101,9 @@ public class ListenFragment extends Fragment {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 if(fromUser) {
-                    mediaPlayer.seekTo(progress);
+                    if(mediaPlayer != null) {
+                        mediaPlayer.seekTo(progress);
+                    }
                     seekBar.setProgress(progress);
                 }
             }
@@ -142,6 +118,7 @@ public class ListenFragment extends Fragment {
 
             }
         });
+
         play.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -162,7 +139,34 @@ public class ListenFragment extends Fragment {
             }
         });
 
+        new ItemTouchHelper(new ItemTouchHelper.SimpleCallback(0,
+                ItemTouchHelper.LEFT) {
+            @Override
+            public boolean onMove(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder, @NonNull RecyclerView.ViewHolder target) {
+                return false;
+            }
+
+            @Override
+            public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
+                recordsViewModel.deleteRecord(recordsAdapter.getRecordAt(viewHolder.getAdapterPosition()));
+                Toast.makeText(getActivity(), "Record Deleted", Toast.LENGTH_SHORT).show();
+            }
+        }).attachToRecyclerView(recordRecyclerView);
+
+
+
         return view;
+    }
+
+    private void init(View view) {
+        play = view.findViewById(R.id.play_btn);
+        chronometer = view.findViewById(R.id.timer);
+        seekBar = view.findViewById(R.id.seekBar);
+        playing_stat = false;
+        recordRecyclerView = (RecyclerView) view.findViewById(R.id.recordRecyclerView);
+        recordsAdapter = new RecordsAdapter();
+        recordRecyclerView.setAdapter(recordsAdapter);
+        handler = new Handler();
     }
 
     public void startChronometer()

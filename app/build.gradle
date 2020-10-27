@@ -46,4 +46,11 @@ dependencies {
     implementation "io.reactivex.rxjava2:rxandroid:$rxJavaVersion"
     implementation "io.reactivex.rxjava2:rxjava:$rxJavaVersion"
 
+    //MVVM
+    def lifecycle_version = "2.2.0"
+    // ViewModel
+    implementation "androidx.lifecycle:lifecycle-viewmodel:$lifecycle_version"
+    // LiveData
+    implementation "androidx.lifecycle:lifecycle-livedata:$lifecycle_version"
+
 }
