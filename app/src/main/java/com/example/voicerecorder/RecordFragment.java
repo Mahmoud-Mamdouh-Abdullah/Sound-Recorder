@@ -125,7 +125,7 @@ public class RecordFragment extends Fragment {
                 if(recordName.getText().toString().isEmpty())
                     name = "audio" + System.currentTimeMillis() + ".mp3";
                 else
-                    name = recordName.getText().toString() + ".mp3";
+                    name = recordName.getText().toString() + System.currentTimeMillis() + ".mp3";
                 String duration = getRecordDuration(pathSave);
                 String recordSize = getRecordSize(pathSave);
                 String dateTime = getCurrDateTime();

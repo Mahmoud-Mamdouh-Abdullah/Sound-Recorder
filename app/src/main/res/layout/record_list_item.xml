@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="60dp"
     android:layout_margin="3dp"
-    app:cardBackgroundColor="@color/colorPrimaryDark"
+    app:cardBackgroundColor="@color/colorPrimaryLight"
     app:cardCornerRadius="5dp"
     android:clickable="true"
     android:focusable="true"
@@ -30,7 +30,9 @@
             android:layout_alignParentLeft="true"
             android:layout_alignParentTop="true"
             android:layout_marginLeft="10dp"
-            android:layout_marginTop="10dp"/>
+            android:layout_marginTop="10dp"
+            android:maxLength="35"
+            />
 
         <TextView
             android:id="@+id/dateTime"

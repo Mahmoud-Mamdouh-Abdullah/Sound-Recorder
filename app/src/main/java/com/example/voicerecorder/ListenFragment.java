@@ -1,5 +1,6 @@
 package com.example.voicerecorder;
 
+import android.app.Dialog;
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.Handler;
@@ -10,8 +11,11 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
+import android.widget.Button;
 import android.widget.Chronometer;
 import android.widget.SeekBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -47,7 +51,7 @@ public class ListenFragment extends Fragment {
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.listen_layout,container,false);
+        final View view = inflater.inflate(R.layout.listen_layout,container,false);
 
 
         init(view);
@@ -147,7 +151,7 @@ public class ListenFragment extends Fragment {
             }
 
             @Override
-            public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
+            public void onSwiped(@NonNull final RecyclerView.ViewHolder viewHolder, int direction) {
                 recordsViewModel.deleteRecord(recordsAdapter.getRecordAt(viewHolder.getAdapterPosition()));
                 Toast.makeText(getActivity(), "Record Deleted", Toast.LENGTH_SHORT).show();
             }
